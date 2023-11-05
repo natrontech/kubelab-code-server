@@ -1,16 +1,15 @@
 name: Docker Image Build & Push
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [created]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  build-and-push-image:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -18,35 +17,25 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Log in to the Container registry
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get Dockerfiles
-        id: files
-        run: |
-          echo "::set-output name=dockerfiles::$(find . -type f -name Dockerfile)"
-        shell: bash
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: Build and push Docker images
-        run: |
-          for dockerfile in ${{ steps.files.outputs.dockerfiles }}
-          do
-            relative_path=$(realpath --relative-to=./jupyter $dockerfile)
-            framework=$(dirname $relative_path | cut -d'/' -f1)
-            version=$(basename $(dirname $relative_path))
-            
-            echo "Processing Dockerfile for framework $framework version $version..."
-            
-            # Extract the directory containing the Dockerfile to use as build context
-            context_dir=$(dirname $dockerfile)
-            
-            docker build -f $dockerfile -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${framework}-${version} $context_dir
-            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${framework}-${version}
-          done
-        shell: bash
+      - name: Build and push Docker image
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
