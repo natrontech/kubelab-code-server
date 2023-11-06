@@ -20,11 +20,11 @@ RUN sed -i '/\/app\/code-server\/bin\/code-server/a \\\t\t\t\t--disable-workspac
 # install kubernetes vs code extension
 RUN /app/code-server/bin/code-server --install-extension ms-kubernetes-tools.vscode-kubernetes-tools --extensions-dir /config/extensions
 
-# set dark theme
-RUN sed -i 's/"workbench.colorTheme": "Default Light+",/"workbench.colorTheme": "Default Dark Modern",/g' /config/data/User/settings.json
+RUN mkdir -p /config/data/User
+RUN touch /config/data/User/settings.json
 
-# disable welcome page
-RUN sed -i 's/"workbench.startupEditor": "welcomePage",/"workbench.startupEditor": "newUntitledFile",/g' /config/data/User/settings.json
+# set dark theme with echo and disable welcome page "workbench.startupEditor": "none"
+RUN echo '{ "workbench.colorTheme": "Default Dark Modern", "workbench.startupEditor": "none" }' >> /config/data/User/settings.json
 
 # Installing kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
